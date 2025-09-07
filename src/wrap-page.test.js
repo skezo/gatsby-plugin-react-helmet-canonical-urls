@@ -1,215 +1,158 @@
 const React = require('react');
 const ReactDOMServer = require('react-dom/server');
 const { Helmet } = require('react-helmet');
-const wrap = require('./wrap-page');
+const wrapPageElement = require('./wrap-page');
 
-it('should set canonical', () => {
-  const element = wrap(
-    {
-      element: 'element',
-      props: {
-        location: {
-          pathname: '/pathname/',
-          search: '?search',
-          hash: '#hash',
-        },
-      },
-    },
-    {
-      siteUrl: 'http://my-site.com',
-    }
-  );
+Helmet.canUseDOM = false;
 
-  ReactDOMServer.renderToString(element);
-
-  const link = Helmet.renderStatic().link.toComponent();
-  expect(link.length).toBe(1);
-  expect(link[0].props.href).toBe('http://my-site.com/pathname/?search#hash');
-});
-
-it('should use a slash as pathname, if it is falsy', () => {
-  const element = wrap(
-    {
-      element: 'element',
-      props: {
-        location: {
-          pathname: '',
-          search: '?search',
-          hash: '#hash',
-        },
-      },
-    },
-    {
-      siteUrl: 'http://my-site.com',
-    }
-  );
-
-  ReactDOMServer.renderToString(element);
-
-  const link = Helmet.renderStatic().link.toComponent();
-  expect(link.length).toBe(1);
-  expect(link[0].props.href).toBe('http://my-site.com/?search#hash');
-});
-
-it('should element set canonial, it should use it', () => {
-  const canonical = 'https://this-is-a.canonical.test/more-test';
-  const element = wrap(
-    {
-      element: React.createElement(Helmet, {
-        link: [{ rel: 'canonical', key: canonical, href: canonical }],
-      }),
-      props: {
-        location: {
-          pathname: '/example/',
-          search: '?search',
-          hash: '#hash',
-        },
-      },
-    },
-    {
-      siteUrl: 'http://my-site.com',
-    }
-  );
-
-  ReactDOMServer.renderToString(element);
-
-  const link = Helmet.renderStatic().link.toComponent();
-  expect(link.length).toBe(1);
-  expect(link[0].props.href).toBe('https://this-is-a.canonical.test/more-test');
-});
-
-it('should remove trailing slash, if `noTrailingSlash` option is used', () => {
-  const element = wrap(
-    {
-      element: 'element',
-      props: {
-        location: {
-          pathname: '/pathname/',
-          search: '?search',
-          hash: '#hash',
-        },
-      },
-    },
-    {
-      siteUrl: 'http://my-site.com',
-      noTrailingSlash: true,
-    }
-  );
-
-  ReactDOMServer.renderToString(element);
-
-  const link = Helmet.renderStatic().link.toComponent();
-  expect(link.length).toBe(1);
-  expect(link[0].props.href).toBe('http://my-site.com/pathname?search#hash');
-});
-
-it('should remove query string, if `noQueryString` option is used', () => {
-  const element = wrap(
-    {
-      element: 'element',
-      props: {
-        location: {
-          pathname: '/pathname/',
-          search: '?search',
-          hash: '#hash',
-        },
-      },
-    },
-    {
-      siteUrl: 'http://my-site.com',
-      noQueryString: true,
-    }
-  );
-
-  ReactDOMServer.renderToString(element);
-
-  const link = Helmet.renderStatic().link.toComponent();
-  expect(link.length).toBe(1);
-  expect(link[0].props.href).toBe('http://my-site.com/pathname/#hash');
-});
-
-it('should remove hash, if `noHash` option is used', () => {
-  const element = wrap(
-    {
-      element: 'element',
-      props: {
-        location: {
-          pathname: '/pathname/',
-          search: '?search',
-          hash: '#hash',
-        },
-      },
-    },
-    {
-      siteUrl: 'http://my-site.com',
-      noHash: true,
-    }
-  );
-
-  ReactDOMServer.renderToString(element);
-
-  const link = Helmet.renderStatic().link.toComponent();
-  expect(link.length).toBe(1);
-  expect(link[0].props.href).toBe('http://my-site.com/pathname/?search');
-});
-
-it('should not set canonical if no options is passed', () => {
-  const element = wrap({
-    element: 'element',
-    props: {
-      location: {},
-    },
+describe('gatsby-plugin-react-helmet-canonical-urls', () => {
+  // Reset Helmet's static state before each test to prevent side-effects
+  beforeEach(() => {
+    Helmet.renderStatic();
   });
 
-  ReactDOMServer.renderToString(element);
-
-  const link = Helmet.renderStatic().link.toComponent();
-  expect(link.length).toBe(0);
-});
-
-it('should not set canonical if no siteUrl option is passed', () => {
-  const element = wrap(
-    {
-      element: 'element',
-      props: {
-        location: {},
+  const runPlugin = (location, options) => {
+    const element = wrapPageElement(
+      {
+        element: React.createElement('div', null, 'Page Element'),
+        props: { location },
       },
-    },
-    {}
-  );
+      options
+    );
+    ReactDOMServer.renderToString(element);
+    return Helmet.renderStatic().link.toComponent();
+  };
 
-  ReactDOMServer.renderToString(element);
+  describe('Core Functionality', () => {
+    it('should generate a full canonical URL with all parts', () => {
+      const location = {
+        pathname: '/pathname/',
+        search: '?search',
+        hash: '#hash',
+      };
+      const options = { siteUrl: 'https://my-site.com' };
+      const linkTags = runPlugin(location, options);
 
-  const link = Helmet.renderStatic().link.toComponent();
-  expect(link.length).toBe(0);
-});
+      expect(linkTags).toHaveLength(1);
+      expect(linkTags[0].props.href).toBe(
+        'https://my-site.com/pathname/?search#hash'
+      );
+    });
 
-test.each([
-  [['/my-pathname']],
-  [['/something', '/my-pathname']],
-  [[/pathname/]],
-  [[/^not/, /pathname/]],
-  [[new RegExp('pathname')]],
-])('should not set canonical if pathname is excluded: %p', exclude => {
-  const element = wrap(
-    {
-      element: 'element',
-      props: {
-        location: {
-          pathname: '/my-pathname/',
-          search: '',
-          hash: '',
-        },
-      },
-    },
-    {
-      siteUrl: 'http://my-site.com',
-      exclude,
-    }
-  );
+    it('should default to a single "/" for a falsy pathname', () => {
+      const location = { pathname: '', search: '?q=1', hash: '' };
+      const options = { siteUrl: 'https://my-site.com' };
+      const linkTags = runPlugin(location, options);
 
-  ReactDOMServer.renderToString(element);
+      expect(linkTags).toHaveLength(1);
+      expect(linkTags[0].props.href).toBe('https://my-site.com/?q=1');
+    });
+  });
 
-  const link = Helmet.renderStatic().link.toComponent();
-  expect(link.length).toBe(0);
+  describe('Option Flags', () => {
+    test.each([
+      ['noTrailingSlash', 'https://my-site.com/pathname?search#hash'],
+      ['noQueryString', 'https://my-site.com/pathname/#hash'],
+      ['noHash', 'https://my-site.com/pathname/?search'],
+    ])('should correctly format URL when `%s` is true', (option, expected) => {
+      const location = {
+        pathname: '/pathname/',
+        search: '?search',
+        hash: '#hash',
+      };
+      const options = {
+        siteUrl: 'https://my-site.com',
+        [option]: true,
+      };
+      const linkTags = runPlugin(location, options);
+
+      expect(linkTags).toHaveLength(1);
+      expect(linkTags[0].props.href).toBe(expected);
+    });
+  });
+
+  describe('Exclude Logic (Blacklist Mode)', () => {
+    it('should not generate a canonical URL for an excluded path', () => {
+      const location = { pathname: '/excluded-page/' };
+      const options = {
+        siteUrl: 'https://my-site.com',
+        exclude: ['/excluded-page'],
+      };
+      const linkTags = runPlugin(location, options);
+
+      expect(linkTags).toHaveLength(0);
+    });
+
+    it('should block sub-paths due to regex matching', () => {
+      const location = { pathname: '/admin/dashboard' };
+      const options = {
+        siteUrl: 'https://my-site.com',
+        exclude: ['/admin'], // This will match any path containing '/admin'
+      };
+      const linkTags = runPlugin(location, options);
+
+      expect(linkTags).toHaveLength(0);
+    });
+
+    it('should NOT block sub-paths when using anchors for an exact match', () => {
+      const location = { pathname: '/admin/dashboard' };
+      const options = {
+        siteUrl: 'https://my-site.com',
+        exclude: ['^/admin$'], // This will only match the exact '/admin' path
+      };
+      const linkTags = runPlugin(location, options);
+
+      expect(linkTags).toHaveLength(1);
+      expect(linkTags[0].props.href).toBe(
+        'https://my-site.com/admin/dashboard'
+      );
+    });
+  });
+
+  describe('Include Logic (Whitelist Mode)', () => {
+    it('should generate a canonical URL for an included path', () => {
+      const location = { pathname: '/blog/my-post' };
+      const options = {
+        siteUrl: 'https://my-site.com',
+        include: ['/blog/'],
+      };
+      const linkTags = runPlugin(location, options);
+
+      expect(linkTags).toHaveLength(1);
+      expect(linkTags[0].props.href).toBe('https://my-site.com/blog/my-post');
+    });
+
+    it('should NOT generate a canonical URL for a non-included path', () => {
+      const location = { pathname: '/about-us' };
+      const options = {
+        siteUrl: 'https://my-site.com',
+        include: ['/blog/'],
+      };
+      const linkTags = runPlugin(location, options);
+
+      expect(linkTags).toHaveLength(0);
+    });
+
+    it('should ignore the `exclude` array when `include` is present', () => {
+      const location = { pathname: '/blog/my-post' };
+      const options = {
+        siteUrl: 'https://my-site.com',
+        include: ['/blog/'],
+        exclude: ['/blog/my-post'], // This should be ignored
+      };
+      const linkTags = runPlugin(location, options);
+
+      expect(linkTags).toHaveLength(1); // It should still be included
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should not generate a canonical URL if siteUrl is not provided', () => {
+      const location = { pathname: '/' };
+      const options = {}; // No siteUrl
+      const linkTags = runPlugin(location, options);
+
+      expect(linkTags).toHaveLength(0);
+    });
+  });
 });

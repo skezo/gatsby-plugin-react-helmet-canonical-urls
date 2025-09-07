@@ -86,11 +86,11 @@ module.exports = (
     let canonicalUrl = `${siteUrl}${pathname}`;
 
     if (!options.noQueryString) {
-      canonicalUrl += location.search;
+      canonicalUrl += (location.search || '');
     }
 
     if (!options.noHash) {
-      canonicalUrl += location.hash;
+      canonicalUrl += (location.hash || '');
     }
 
     return (
