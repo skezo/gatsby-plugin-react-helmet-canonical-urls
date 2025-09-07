@@ -44,9 +44,48 @@ a `rel=canonical` e.g.
 <link rel="canonical" href="http://www.example.com/about-us/" />
 ```
 
-Additional `options`:
+#### `options`
 
-- `exclude` (Array of `string` or `RegExp`, default `undefined`): exclude pages from being added a canonical url. Useful when combining with other SEO-related meta tags like _noindex_. (Urls should be listed without trailing slash)
-- `noTrailingSlash` (default `false`): it will remove the trailing slash from canonical link. Use this option if you use [`gatsby-plugin-remove-trailing-slashes`](https://www.npmjs.com/package/gatsby-plugin-remove-trailing-slashes)
-- `noHash` (default `false`): remove hash from the canonical link.
-- `noQueryString` (default `false`): remove query from the canonical link.
+##### `siteUrl`
+- **Type:** `string`
+- **Required**
+- The root address of your site (e.g., `https://www.example.com`). This is required to generate the full canonical URL. The plugin will do nothing if this is not provided.
+
+##### `include`
+- **Type:** `(string | RegExp)[]`
+- **Default:** `undefined`
+- If provided, the plugin operates in **whitelist mode**. A canonical URL will be generated **only** for paths that match a pattern in this array. If this option is used, `exclude` is ignored. Note that strings are treated as regular expression patterns.
+  - **Example:** `include: ['/products/']` will match `/products/cool-item` but not `/about-us`.
+
+##### `exclude`
+- **Type:** `(string | RegExp)[]`
+- **Default:** `undefined`
+- If `include` is not used, the plugin operates in **blacklist mode**. This option allows you to exclude specific paths from receiving a canonical URL. This is useful for pages with other SEO tags like `noindex`.
+
+> #### ⚠️ Breaking Change in v2.0.0
+> String patterns in the `exclude` and `include` arrays are now treated as **Regular Expressions** instead of exact string matches. This provides more powerful and predictable matching.
+>
+> **Old Behavior (v1.x.x):**
+> `exclude: ['/admin']` would only block the exact path `/admin`. It would **not** block `/admin/login`.
+>
+> **New Behavior (v2.x.x):**
+> `exclude: ['/admin']` now functions like a regex and will block any path that **contains** the string `/admin`, including `/admin` itself, `/admin/login`, and `/some/other/admin/page`.
+>
+> **✅ How to Restore Old Behavior:**
+> To match an exact path only, use start (`^`) and end (`$`) anchors in your string:
+> `exclude: ['^/admin$']`
+
+##### `noTrailingSlash`
+- **Type:** `boolean`
+- **Default:** `false`
+- If `true`, removes the trailing slash from the generated canonical URL. This should be used if your site enforces a no-trailing-slash policy, for example, by using `gatsby-plugin-remove-trailing-slashes`.
+
+##### `noQueryString`
+- **Type:** `boolean`
+- **Default:** `false`
+- If `true`, removes query parameters (e.g., `?id=123`) from the generated canonical URL.
+
+##### `noHash`
+- **Type:** `boolean`
+- **Default:** `false`
+- If `true`, removes the hash fragment (e.g., `#section-one`) from the generated canonical URL.
